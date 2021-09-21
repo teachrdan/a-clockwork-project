@@ -24,7 +24,7 @@ const minuteScale = d3.scaleLinear().range([0, 354]).domain([0, 59])
 
 const secondScale = minuteScale
 
-let stopped = false;
+let isStopped = false;
 
 const handData = [
   {
@@ -75,7 +75,7 @@ function drawClock() {
     .attr("height", "50px")
     .attr("r", 20)
     .on("click", () => {
-      stopped = !stopped;
+      isStopped = !isStopped;
     })
 
   //add marks for seconds
@@ -89,7 +89,7 @@ function drawClock() {
   //   .attr("x2", 0)
   //   .attr("y1", secondTickStart)
   //   .attr("y2", secondTickStart + secondTickLength)
-  //   .attr("transform", function (d) {
+  //   .attr("transform", (d) => {
   //     return "rotate(" + secondScale(d) + ")"
   //   })
 
@@ -101,16 +101,16 @@ function drawClock() {
   //   .append("text")
   //   .attr("class", "second-label")
   //   .attr("text-anchor", "middle")
-  //   .attr("x", function (d) {
+  //   .attr("x", (d) => {
   //     return secondLabelRadius * Math.sin(secondScale(d) * radians)
   //   })
-  //   .attr("y", function (d) {
+  //   .attr("y", (d) => {
   //     return (
   //       -secondLabelRadius * Math.cos(secondScale(d) * radians) +
   //       secondLabelYOffset
   //     )
   //   })
-  //   .text(function (d) {
+  //   .text((d) => {
   //     return d
   //   })
 
@@ -125,7 +125,7 @@ function drawClock() {
     .attr("x2", 0)
     .attr("y1", hourTickStart)
     .attr("y2", hourTickStart + hourTickLength)
-    .attr("transform", function (d) {
+    .attr("transform", (d) => {
       const hourRotate = hourScale(d);
       return `rotate(${hourRotate})`
     })
@@ -137,15 +137,15 @@ function drawClock() {
     .append("text")
     .attr("class", "hour-label")
     .attr("text-anchor", "middle")
-    .attr("x", function (d) {
+    .attr("x", (d) => {
       return hourLabelRadius * Math.sin(hourScale(d) * radians)
     })
-    .attr("y", function (d) {
+    .attr("y", (d) => {
       return (
         -hourLabelRadius * Math.cos(hourScale(d) * radians) + hourLabelYOffset
       )
     })
-    .text(function (d) {
+    .text((d) => {
       return d
     })
 
@@ -165,18 +165,18 @@ function drawClock() {
     .data(handData)
     .enter()
     .append("line")
-    .attr("class", function (d) {
+    .attr("class", (d) => {
       return d.type + "-hand"
     })
     .attr("x1", 0)
-    .attr("y1", function (d) {
+    .attr("y1", (d) => {
       return d.balance ? d.balance : 0
     })
     .attr("x2", 0)
-    .attr("y2", function (d) {
+    .attr("y2", (d) => {
       return d.length
     })
-    .attr("transform", function (d) {
+    .attr("transform", (d) => {
       return "rotate(" + d.scale(d.value) + ")"
     })
 }
@@ -186,27 +186,59 @@ function moveHands() {
     .selectAll("line")
     .data(handData)
     .transition()
-    .attr("transform", function (d) {
-      const value = d.value;
-      console.log('value', value)
-      
-      const position = d.scale(d.value);
-      console.log('position', position)
-      const rotate = stopped ? 0 : d.scale(d.value)
+    .attr("transform", (d) => {
+      const rotate = d.scale(d.value)
+
       return `rotate(${rotate})`
     })
 }
 
 function updateData() {
   const t = new Date()
-  handData[0].value = (t.getHours() % 12) + t.getMinutes() / 60
-  handData[1].value = t.getMinutes()
-  handData[2].value = t.getSeconds()
+  // see if it's isStopped
+  // if it is, see if it's before 6pm
+  // if it is, move it to 6pm
+  // if it's not at 12, move it to 12
+  const hours = t.getHours();
+  const minutes = t.getMinutes();
+  const seconds = t.getSeconds();
+
+  if (isStopped) {
+    const after6 = (hours > 4 && hours < 11) || hours > 17;
+    const after30m = minutes > 29;
+    const after30s = seconds > 30;
+  
+    if (!after6){
+      handData[0].value = 6;
+    }
+    else {
+      handData[0].value = 0;
+    }
+
+    if (!after30m) {
+      handData[1].value = 31;
+    } 
+    else {
+      handData[1].value = minutes;
+    }
+
+    if (!after30s) {
+    handData[2].value = 31;
+    }
+    else {
+    handData[2].value = seconds;
+    }
+  }
+  else {
+    handData[0].value = (t.getHours() % 12) + minutes / 60
+    handData[1].value = minutes;
+    handData[2].value = 0;
+  }
 }
 
 drawClock()
 
-setInterval(function () {
+setInterval(() => {
     updateData()
     moveHands()
 }, 1000)

@@ -194,6 +194,11 @@ function moveHands() {
 }
 
 function updateData() {
+  const allHandsAt12 = handData[0].value === 0 && handData[1].value === 0 && handData[2].value === 0;
+
+  // bail condition
+  if (isStopped && allHandsAt12) return;
+
   const t = new Date()
   // see if it's isStopped
   // if it is, see if it's before 6pm
@@ -203,36 +208,32 @@ function updateData() {
   const minutes = t.getMinutes();
   const seconds = t.getSeconds();
 
-  if (isStopped) {
-    const after6 = (hours > 4 && hours < 11) || hours > 17;
-    const after30m = minutes > 29;
-    const after30s = seconds > 30;
+  const isAfter6 = (hours > 4 && hours < 11) || hours > 17;
+  const isAfter30m = minutes > 29;
+  const isAfter30s = seconds > 29;
   
-    if (!after6){
-      handData[0].value = 6;
-    }
-    else {
-      handData[0].value = 0;
-    }
+  if (isStopped) {
+    const moveHoursTo12 = isAfter6 || handData[0].value === 6;
+    const moveMinutesTo12 = isAfter30m || handData[1].value === 31;
+    const moveSecondsTo12 = isAfter30s || handData[2].value === 31;
+    
+    handData[0].value = moveHoursTo12 ? 0 : 6;
+    handData[1].value = moveMinutesTo12 ? 0 : 31;
+    handData[2].value = moveSecondsTo12 ? 0 : 31;
+  }
+  else if (!isStopped && allHandsAt12) {
+    const moveHoursTo6 = isAfter6 || handData[0].value === 6;
+    const moveMinutesTo30 = isAfter30m || handData[1].value === 31;
+    const moveSecondsTo30 = isAfter30s || handData[2].value === 31;
 
-    if (!after30m) {
-      handData[1].value = 31;
-    } 
-    else {
-      handData[1].value = minutes;
-    }
-
-    if (!after30s) {
-    handData[2].value = 31;
-    }
-    else {
-    handData[2].value = seconds;
-    }
+    handData[0].value = moveHoursTo6 ? 6 : (t.getHours() % 12) + minutes / 60
+    handData[1].value = moveMinutesTo30 ? 30 : minutes;
+    handData[2].value = moveSecondsTo30 ? 30 : seconds;
   }
   else {
     handData[0].value = (t.getHours() % 12) + minutes / 60
     handData[1].value = minutes;
-    handData[2].value = 0;
+    handData[2].value = seconds;
   }
 }
 
@@ -241,6 +242,6 @@ drawClock()
 setInterval(() => {
     updateData()
     moveHands()
-}, 1000)
+}, 500)
 
 d3.select(self.frameElement).style("height", height + "px")
